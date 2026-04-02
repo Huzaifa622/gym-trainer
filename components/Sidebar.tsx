@@ -18,7 +18,7 @@ export default function Sidebar() {
   const { logout } = useAuth();
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-gray-200 bg-white">
+    <aside className="flex w-64 fixed h-screen  flex-col border-r border-gray-200 bg-white">
       <div className="flex h-16 items-center border-b border-gray-200 px-6">
         <span className="text-xl font-bold text-blue-600">GymPro</span>
         <span className="ml-1 text-sm text-gray-500">Trainer</span>

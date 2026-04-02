@@ -24,7 +24,7 @@ export default function LoginPage() {
     try {
       const { data } = await login(email, password);
       console.log(data)
-      setTokens(data.accessToken, data.refreshToken);
+      setTokens(data.data.token);
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Invalid credentials');

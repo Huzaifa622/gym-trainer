@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getSchedule } from '@/lib/api';
 import { Clock } from 'lucide-react';
@@ -18,26 +18,24 @@ const DAY_COLORS: Record<string, string> = {
 };
 
 export default function SchedulePage() {
-  const [schedule, setSchedule] = useState<Slot[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getSchedule().then(({ data }) => setSchedule(data)).finally(() => setLoading(false));
-  }, []);
+  const { data: schedule = [], isLoading } = useQuery({
+    queryKey: ['schedule'],
+    queryFn: () => getSchedule().then(r => r.data.data),
+  });
 
   const grouped = DAY_ORDER.reduce<Record<string, Slot[]>>((acc, day) => {
-    const slots = schedule.filter(s => s.day === day);
+    const slots = schedule.filter((s: Slot) => s.day === day);
     if (slots.length) acc[day] = slots;
     return acc;
   }, {});
 
-  const totalHours = schedule.reduce((acc, s) => {
+  const totalHours = schedule.reduce((acc: number, s: Slot) => {
     const [fh, fm] = s.from.split(':').map(Number);
     const [th, tm] = s.to.split(':').map(Number);
     return acc + (th + tm / 60) - (fh + fm / 60);
   }, 0);
 
-  if (loading) return (
+  if (isLoading) return (
     <div className="flex items-center justify-center h-64">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
     </div>
@@ -82,8 +80,7 @@ export default function SchedulePage() {
                       {(() => {
                         const [fh, fm] = s.from.split(':').map(Number);
                         const [th, tm] = s.to.split(':').map(Number);
-                        const hrs = (th + tm / 60) - (fh + fm / 60);
-                        return hrs.toFixed(1) + 'h';
+                        return ((th + tm / 60) - (fh + fm / 60)).toFixed(1) + 'h';
                       })()}
                     </span>
                   </div>
@@ -100,8 +97,8 @@ export default function SchedulePage() {
           <CardContent>
             <div className="grid grid-cols-7 gap-2">
               {DAY_ORDER.map(day => {
-                const slots = schedule.filter(s => s.day === day);
-                const hrs = slots.reduce((acc, s) => {
+                const slots = schedule.filter((s: Slot) => s.day === day);
+                const hrs = slots.reduce((acc: number, s: Slot) => {
                   const [fh, fm] = s.from.split(':').map(Number);
                   const [th, tm] = s.to.split(':').map(Number);
                   return acc + (th + tm / 60) - (fh + fm / 60);

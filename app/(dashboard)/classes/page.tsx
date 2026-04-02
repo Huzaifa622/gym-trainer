@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,21 +21,27 @@ type GymClass = {
 const emptyForm = { className: '', scheduledTime: '', capacity: 20 };
 
 export default function ClassesPage() {
-  const [classes, setClasses] = useState<GymClass[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [enrollments, setEnrollments] = useState<{ id: string; data: any[] } | null>(null);
 
-  const load = () => {
-    setLoading(true);
-    getClasses().then(({ data }) => setClasses(data)).finally(() => setLoading(false));
-  };
+  const { data: classes = [], isLoading } = useQuery({
+    queryKey: ['classes'],
+    queryFn: () => getClasses().then(r => r.data.data),
+  });
 
-  useEffect(() => { load(); }, []);
+  const saveMutation = useMutation({
+    mutationFn: (data: typeof emptyForm) =>
+      editId ? updateClass(editId, data) : createClass(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      setShowForm(false);
+    },
+    onError: (err: any) => setError(err.response?.data?.message || 'Failed to save class'),
+  });
 
   const openCreate = () => { setForm(emptyForm); setEditId(null); setShowForm(true); setError(''); };
   const openEdit = (c: GymClass) => {
@@ -44,27 +51,19 @@ export default function ClassesPage() {
     setError('');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true); setError('');
-    try {
-      if (editId) await updateClass(editId, form);
-      else await createClass(form);
-      setShowForm(false);
-      load();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to save class');
-    } finally {
-      setSaving(false);
-    }
+    setError('');
+    saveMutation.mutate(form);
   };
 
   const viewEnrollments = async (id: string) => {
     const { data } = await getClassEnrollments(id);
-    setEnrollments({ id, data });
+   const enrollmentsData = data.data || [];
+    setEnrollments({ id, data: enrollmentsData });
   };
 
-  if (loading) return (
+  if (isLoading) return (
     <div className="flex items-center justify-center h-64">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
     </div>
@@ -102,7 +101,7 @@ export default function ClassesPage() {
               </div>
               {error && <p className="col-span-3 text-sm text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-md">{error}</p>}
               <div className="col-span-3 flex gap-2">
-                <Button type="submit" disabled={saving}>{saving ? 'Saving...' : editId ? 'Update Class' : 'Create Class'}</Button>
+                <Button type="submit" disabled={saveMutation.isPending}>{saveMutation.isPending ? 'Saving...' : editId ? 'Update Class' : 'Create Class'}</Button>
                 <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
               </div>
             </form>
@@ -140,7 +139,7 @@ export default function ClassesPage() {
         {classes.length === 0 && (
           <p className="text-gray-400 col-span-3 text-center py-12">No classes yet. Create your first class!</p>
         )}
-        {classes.map(c => (
+        {classes.map((c: GymClass) => (
           <Card key={c._id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-5">
               <div className="flex items-start justify-between mb-3">

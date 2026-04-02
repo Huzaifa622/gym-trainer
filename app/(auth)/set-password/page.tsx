@@ -44,7 +44,7 @@ export default function SetPasswordPage() {
     setLoading(true);
     try {
       const { data } = await setPassword(email, newPassword, confirmPassword, setupToken);
-      setTokens(data.accessToken, data.refreshToken);
+      setTokens(data.data.token);
       sessionStorage.removeItem('setupToken');
       sessionStorage.removeItem('setupEmail');
       router.push('/dashboard');

@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,56 +14,57 @@ const LEVELS = ['beginner', 'intermediate', 'advanced', 'expert'];
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<any>(null);
+  const queryClient = useQueryClient();
   const [form, setForm] = useState<any>({});
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    getProfile().then(({ data }) => {
-      setProfile(data);
-      setForm({
-        name: data.name,
-        fees: data.fees,
-        specialty: data.specialty,
-        experience: data.experience,
-        level: data.level,
-        availability: data.availability || [],
-      });
-    }).finally(() => setLoading(false));
-  }, []);
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ['profile'],
+    queryFn: () => getProfile().then(r => r.data.data),
+  });
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true); setError(''); setSuccess('');
-    try {
-      const { data } = await updateProfile(form);
-      setProfile(data);
-      setSuccess('Profile updated successfully');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to update profile');
-    } finally {
-      setSaving(false);
+  useEffect(() => {
+    if (profile) {
+      setForm({
+        name: profile.name,
+        fees: profile.fees,
+        specialty: profile.specialty,
+        experience: profile.experience,
+        level: profile.level,
+        availability: profile?.availability?.map(({ _id, ...rest }: any) => rest),
+      });
     }
+  }, [profile]);
+console.log(profile?.availability?.map(({ _id, ...rest }: any) => rest))
+  const updateMutation = useMutation({
+    mutationFn: (data: any) => updateProfile(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      setSuccess('Profile updated successfully');
+    },
+    onError: (err: any) => setError(err.response?.data?.message || 'Failed to update profile'),
+  });
+
+  const pictureMutation = useMutation({
+    mutationFn: (file: File) => uploadProfilePicture(file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      setSuccess('Profile picture updated');
+    },
+    onError: () => setError('Failed to upload picture'),
+  });
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(''); setSuccess('');
+    updateMutation.mutate(form);
   };
 
-  const handlePicture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePicture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const { data } = await uploadProfilePicture(file);
-      setProfile((p: any) => ({ ...p, profilePic: data.profilePic }));
-      setSuccess('Profile picture updated');
-    } catch {
-      setError('Failed to upload picture');
-    } finally {
-      setUploading(false);
-    }
+    if (file) pictureMutation.mutate(file);
   };
 
   const addSlot = () =>
@@ -78,7 +80,7 @@ export default function ProfilePage() {
       return { ...f, availability: av };
     });
 
-  if (loading) return (
+  if (isLoading) return (
     <div className="flex items-center justify-center h-64">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
     </div>
@@ -108,7 +110,7 @@ export default function ProfilePage() {
             <p className="text-gray-500 text-sm">{profile?.specialty}</p>
             <div className="flex gap-2 mt-2">
               <Badge label={profile?.level} />
-              {uploading && <span className="text-xs text-blue-600">Uploading...</span>}
+              {pictureMutation.isPending && <span className="text-xs text-blue-600">Uploading...</span>}
             </div>
           </div>
         </CardContent>
@@ -180,7 +182,7 @@ export default function ProfilePage() {
 
         {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-md">{error}</p>}
         {success && <p className="text-sm text-green-600 bg-green-50 border border-green-200 px-3 py-2 rounded-md">{success}</p>}
-        <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
+        <Button type="submit" disabled={updateMutation.isPending}>{updateMutation.isPending ? 'Saving...' : 'Save Changes'}</Button>
       </form>
     </div>
   );

@@ -13,23 +13,10 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (res) => res,
-  async (error) => {
-    const original = error.config;
-    if (error.response?.status === 401 && !original._retry) {
-      original._retry = true;
-      const refreshToken = Cookies.get('refreshToken');
-      if (refreshToken) {
-        try {
-          const { data } = await axios.post(`${API_BASE}/api/auth/refresh`, { refreshToken });
-          Cookies.set('accessToken', data.accessToken);
-          original.headers.Authorization = `Bearer ${data.accessToken}`;
-          return api(original);
-        } catch {
-          Cookies.remove('accessToken');
-          Cookies.remove('refreshToken');
-          window.location.href = '/login';
-        }
-      }
+  (error) => {
+    if (error.response?.status === 401) {
+      Cookies.remove('accessToken');
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }

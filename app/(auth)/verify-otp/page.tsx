@@ -23,7 +23,8 @@ export default function VerifyOtpPage() {
     setLoading(true);
     try {
       const { data } = await verifyOtp(email, otp);
-      sessionStorage.setItem('setupToken', data.setupToken);
+      console.log(data)
+      sessionStorage.setItem('setupToken', data.data.setupToken);
       sessionStorage.setItem('setupEmail', email);
       router.push('/set-password');
     } catch (err: any) {

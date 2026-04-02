@@ -1,6 +1,7 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { getTrainees } from '@/lib/api';
@@ -17,17 +18,16 @@ type Trainee = {
 };
 
 export default function TraineesPage() {
-  const [trainees, setTrainees] = useState<Trainee[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
 
-  useEffect(() => {
-    getTrainees().then(({ data }) => setTrainees(data)).finally(() => setLoading(false));
-  }, []);
+  const { data: trainees = [], isLoading } = useQuery({
+    queryKey: ['trainees'],
+    queryFn: () => getTrainees().then(r => r.data.data),
+  });
 
-  const filtered = filter === 'all' ? trainees : trainees.filter(t => t.status === filter);
+  const filtered = filter === 'all' ? trainees : trainees.filter((t: Trainee) => t.status === filter);
 
-  if (loading) return (
+  if (isLoading) return (
     <div className="flex items-center justify-center h-64">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
     </div>
@@ -60,7 +60,7 @@ export default function TraineesPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filtered.map(t => (
+        {filtered.map((t: Trainee) => (
           <Card key={t._id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-5">
               <div className="flex items-center gap-3 mb-4">

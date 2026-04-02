@@ -7,7 +7,7 @@ import { logout as apiLogout } from "@/lib/api";
 interface AuthContextType {
   accessToken: string | null;
   isAuthenticated: boolean;
-  setTokens: (access: string, refresh: string) => void;
+  setTokens: (token: string) => void;
   logout: () => void;
 }
 
@@ -22,16 +22,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (token) setAccessToken(token);
   }, []);
 
-  const setTokens = (access: string, refresh: string) => {
-    Cookies.set("accessToken", access, { expires: 1 });
-    Cookies.set("refreshToken", refresh, { expires: 7 });
-    setAccessToken(access);
+  const setTokens = (token: string) => {
+    Cookies.set("accessToken", token, { expires: 1 });
+    setAccessToken(token);
   };
 
   const logout = async () => {
     try { await apiLogout(); } catch {}
     Cookies.remove("accessToken");
-    Cookies.remove("refreshToken");
     setAccessToken(null);
     router.push("/login");
   };

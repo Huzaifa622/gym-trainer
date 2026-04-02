@@ -1,27 +1,16 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getProfile, getClasses, getTrainees } from '@/lib/api';
 import { Users, CalendarDays, Star, DollarSign } from 'lucide-react';
 
 export default function DashboardPage() {
-  const [profile, setProfile] = useState<any>(null);
-  const [classes, setClasses] = useState<any[]>([]);
-  const [trainees, setTrainees] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: profile } = useQuery({ queryKey: ['profile'], queryFn: () => getProfile().then(r => r.data.data) });
+  const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => getClasses().then(r => r.data.data) });
+  const { data: trainees = [], isLoading } = useQuery({ queryKey: ['trainees'], queryFn: () => getTrainees().then(r => r.data.data) });
 
-  useEffect(() => {
-    Promise.all([getProfile(), getClasses(), getTrainees()])
-      .then(([p, c, t]) => {
-        setProfile(p.data);
-        setClasses(c.data);
-        setTrainees(t.data);
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) return (
+  if (isLoading) return (
     <div className="flex items-center justify-center h-64">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
     </div>
